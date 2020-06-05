@@ -12,6 +12,7 @@ using System.ComponentModel;
 using System.Text.RegularExpressions;
 using de_identifying;
 using System.Reflection.Emit;
+using System.Security.Cryptography;
 
 namespace de_identify
 {
@@ -40,45 +41,118 @@ namespace de_identify
 
                     var mdbPath = filePath;
                     var fileName = Path.GetFileName(mdbPath); //파일경로 중 파일명 획득
-
-                    //var tables = GetTables(mdbPath); // 테이블명 불러오기
+                    var tables = GetTables(mdbPath); // 테이블명 불러오기
                     //var columns = GetColumns(mdbPath); // 컬럼명 불러오기
 
+                    var readlines = File.ReadAllLines(@"D:\TEST\인명사전3.txt").ToArray();
+                    var lineCount = readlines.Length;
 
-                    //var patientList = ReadData(mdbPath, table, pathString, fileName); // 환자리스트
-                    /*
-                    string[] readlines = File.ReadAllLines(@"D:\TEST\인명사전3.txt");
-                    var hash = new Hashtable(); // hash table 만들기
-                    var k = 0;
-                    */
-                    var nickNames = File.ReadAllLines(@"D:\TEST\인명사전3.txt")
-                                        .Where(x => !string.IsNullOrWhiteSpace(x))
-                                        .Select(x => x.Trim())
-                                        .ToArray();
-                    var nickNamesCount = nickNames.Length;
-
+                    var masterTable = ("환자정보");                    
+                    var patientList = ReadData(mdbPath, masterTable, pathString, fileName); // 환자정보 테이블
                     var items = new List<Item>();
-                    var table = ("환자정보");
-                    var data = ReadData(mdbPath, table, pathString, fileName);
-                    //var data = new List<PatientRegistration>();
 
-                    for (int i = 0; i < data.Count; i++)
+                    Console.WriteLine("환자 정보 TABLE 입니다.");
+                    for (int i = 0; i < patientList.Count; i++ )
                     {
-                        var d = data[i];
-
-                        var nickname = nickNames[i % nickNamesCount];
+                        var pi = patientList[i];
+                        
+                        var nickname = readlines[i % lineCount];                       
                         var item = new Item()
                         {
                             Index = i,
-                            ChartNumber = d.chartNumber,
-                            PatientName = d.patientName,
-                            Nickname = nickname
+                            ChartNumber = pi.chartNumber,
+                            PatientName = pi.patientName,
+                            Nickname = nickname,
+                            TelNumber = "02-1234-5678"
                         };
+                        Console.WriteLine(item.Index + " | " + item.ChartNumber + " | " + item.PatientName + " | " + item.Nickname + " | " + item.TelNumber);
                         items.Add(item);
-                        Console.WriteLine("{0} | {1} | {2} | {3}", item.Index, item.ChartNumber, item.PatientName, item.Nickname);
+
+                    }
+                    Hashtable hashtable = new Hashtable();
+
+                    var Table = ("등록정보");
+                    Console.WriteLine("상병 등록 정보 TABLE 입니다.");
+                    var patientList2 = ReadData(mdbPath, Table, pathString, fileName); // 등록정보 테이블
+                    
+                    var time1 = DateTime.Now;
+                    var a = 0;
+                    var idxCount = patientList2.Count;
+                    foreach (var p in patientList2)
+                    {
+                        var idx = items
+                                    .Where(x => x.ChartNumber == p.chartNumber)
+                                    .SingleOrDefault();
+                        
+                        if (idx == null)
+                        {
+                            // master table에 없는 데이터
+                        }
+                        else
+                        {
+                            var chartNumber = idx.Index.ToString(); // 새롭게 부여한 차트번호 기존 차트번호는 idx.ChartNumber.ToString()
+                            p.chartNumber = chartNumber; 
+                            var patientName = idx.Nickname;
+                            //Console.WriteLine($"{a} {idx}");                            
+                            Console.WriteLine(a + " | " + chartNumber + " | " + idx.ChartNumber.ToString() + " | " + idx.PatientName + " | " + idx.Nickname);  
+                            //Console.WriteLine(idx);
+                            //Console.WriteLine(idx.Index); 
+                            //Console.WriteLine(idx.PatientName.ToString());
+ 
+
+                        }
+                        a++;
+                        
                     }
 
-                }
+                    //patientList2
+                    //        .AsParallel()
+                    //        .ForAll(p => {
+                    //            var idx = items
+                    //                .Where(x => x.ChartNumber == p.chartNumber)
+                    //                .SingleOrDefault();
+                    //            if (idx == null)
+                    //            {
+                    //                // master table에 없는 데이터
+                    //            }
+                    //            else
+                    //            {
+                    //                var chartNumber = idx.Index.ToString();
+                    //                var patientName = idx.Nickname;
+                    //                p.chartNumber = chartNumber;
+                    //            }
+                    //        });
+                    var time2 = DateTime.Now;
+                    Console.WriteLine(time2 - time1);
+
+                    
+
+                    /*
+                    var Table = ("등록정보");
+                    var patientList2 = ReadData(mdbPath, Table, pathString, fileName); // 등록정보 테이블
+                   
+
+                    for (int j = 0; j < patientList2.Count; j++)
+                    {
+                        var pi = patientList2[j];
+
+                        var nickname = readlines[j % lineCount];
+                        var item = new Item();
+                        using (var items = new List<items>)
+                        {
+                            var Index = items.Index;
+                            var ChartNumber = pi.chartNumber;
+                            var PatientName = pi.patientName;
+                            var Nickname = nickname;
+                            var TelNumber = pi.telNumber;
+                        }
+
+                        //Console.WriteLine(item.Index + " | " + item.ChartNumber + " | " + item.PatientName + " | " + item.Nickname);
+                        items.Add(item);
+                    }*/
+
+
+                }                
                 /*
                 foreach (string line in readlines)
                 {
@@ -96,10 +170,7 @@ namespace de_identify
                         a = Convert.ToInt32(pr.chartNumber) % 3000;
                         Console.WriteLine(a);
                         //b = key;
-
                     }
-
-
 
                     Console.WriteLine("{0},{1}", key, hash[key]);*/
 
@@ -123,7 +194,7 @@ namespace de_identify
             TimeSpan ts = stopWatch.Elapsed;
             Console.WriteLine("Elapsed Time is {0:00}:{1:00}:{2:00}",
                                 ts.Hours, ts.Minutes, ts.Seconds);
-
+            
             Console.ReadLine();
         }
         // public static bool isAccessAble(string path)
@@ -217,28 +288,42 @@ namespace de_identify
                     {
                         PatientInfo pi = new PatientInfo(reader);
                         patientList.Add(pi);
+                        
                     }
                 }
                 return patientList;
             }
         }
-
-
         /*
-            public static void PrintKeysAndValues(Hashtable hash) // hash테이블 출력 함수
-            {
-                Console.WriteLine("\t-KEY-\t-VALUE-");
-                foreach (DictionaryEntry de in hash)
-                    Console.WriteLine($"\t{de.Key}:\t{de.Value}");
-                Console.WriteLine();
-            }*/
-
-        static void DisplayHashCode(String Operand)
+        public static List<PatientRegistration> ReadData(string mdbPath, string tableName, string pathString, string fileName)
         {
-            int HashCode = Operand.GetHashCode();
-            Console.WriteLine("The hash code for \"{0}\" is: 0x{1:X8}, {1}",
-                              Operand, HashCode);
-        }
+            var patientList = new List<PatientRegistration>();
+            var connString = $"Provider=Microsoft.Jet.OLEDB.4.0;Data Source={mdbPath};User ID=admin;JET OLEDB:Database Password=;";
+            var connection = new OleDbConnection(connString);
+            using (connection)
+            {
+                var command = new OleDbCommand($"SELECT * FROM [{tableName}]", connection);
+                connection.Open();
+                using (var reader = command.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        PatientRegistration pr = new PatientRegistration(reader);
+                        patientList.Add(pr);
+                    }
+                }
+                return patientList;
+            }
+        }*/
+        /*
+        public static void connectData(string mdbPath)
+        {
+            var connString = $"Provider=Microsoft.Jet.OLEDB.4.0;Data Source={mdbPath};User ID=admin;JET OLEDB:Database Password=;";
+            var connection = new OleDbConnection(connString);
+
+            return;      
+        }*/
+
 
         /*
 
@@ -268,9 +353,16 @@ namespace de_identify
             }
 
                     }*/
+        static void display(List<Item> data_coll) 
+        { 
+            foreach (Item data in data_coll) 
+            { 
+                Console.WriteLine( data);
+            } 
+            Console.WriteLine(" ------------------------------ "); 
+        }
 
-
-
+        
 
         class Item
         {
@@ -281,7 +373,23 @@ namespace de_identify
             public string PatientName { get; set; }
 
             public string Nickname { get; set; }
+
+            public string TelNumber { get; set; }
+
+            public string PostNumber { get; set; }
+
+            public string Address1 { get; set; }
+
+            public string Address2 { get; set; }
+
+            public string RegistNumber { get; set; }
+           
+            public override string ToString()
+            {
+                return $"{Index} {ChartNumber} {PatientName} {Nickname} {TelNumber} {PostNumber}";
+            }
         }
+        
     }
 }
 
